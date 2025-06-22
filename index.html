@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Otaku Édition – T-shirt Toji Jujutsu Kaisen</title>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+  
+  <!-- TikTok Pixel Code Start -->
+  <script>
+  !function (w, d, t) {
+    w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(
+  var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script")
+  ;n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
+
+
+    ttq.load('D1BVA1JC77UBTE6711KG');
+    ttq.page();
+  }(window, document, 'ttq');
+  </script>
+  <!-- TikTok Pixel Code End -->
+
   <style>
     body {
       background: linear-gradient(120deg, #181824 80%, #372d55 100%);
@@ -472,51 +487,6 @@
   <script>
     // ------ Variables état ------
     let selectedTaille = null;
-    
-    // ------ NEW: TikTok Pixel Event Functions ------
-    
-    // Function to track ViewContent
-    function trackTikTokViewContent() {
-      if (typeof ttq === 'undefined') return;
-      ttq.track('ViewContent', {
-        content_type: 'product',
-        content_id: 'JJK-TOJI-001',
-        content_name: 'T-shirt Toji – Jujutsu Kaisen',
-        quantity: 1,
-        price: 9.99,
-        value: 9.99,
-        currency: 'EUR'
-      });
-    }
-
-    // Function to track AddToCart
-    function trackTikTokAddToCart() {
-      if (typeof ttq === 'undefined') return;
-      ttq.track('AddToCart', {
-        content_type: 'product',
-        content_id: 'JJK-TOJI-001',
-        content_name: 'T-shirt Toji – Jujutsu Kaisen',
-        quantity: 1,
-        price: 9.99,
-        value: 9.99,
-        currency: 'EUR'
-      });
-    }
-
-    // Function to track InitiateCheckout
-    function trackTikTokInitiateCheckout() {
-      if (typeof ttq === 'undefined') return;
-      ttq.track('InitiateCheckout', {
-        content_type: 'product',
-        content_id: 'JJK-TOJI-001',
-        content_name: 'T-shirt Toji – Jujutsu Kaisen',
-        quantity: 1,
-        price: 9.99,
-        value: 9.99,
-        currency: 'EUR'
-      });
-    }
-
 
     // ---- Affichage Popup Sélection de taille ----
     function showTaillePopup() {
@@ -539,8 +509,19 @@
     // ---- Ajouter au panier + Notification ----
     function ajouterAuPanier() {
       trackAction(`Validation de la taille: ${selectedTaille}`);
-      trackTikTokAddToCart(); // Call the dedicated tracking function
       
+      if (typeof ttq !== 'undefined') {
+        ttq.track('AddToCart', {
+          content_type: 'product',
+          content_id: 'JJK-TOJI-001',
+          content_name: 'T-shirt Toji – Jujutsu Kaisen',
+          quantity: 1,
+          price: 9.99,
+          value: 9.99,
+          currency: 'EUR'
+        });
+      }
+
       hideTaillePopup();
       document.getElementById("selectedTailleAffiche").innerText = "Taille : " + selectedTaille;
       showNotif();
@@ -565,7 +546,18 @@
     // ---- Paiement Popup & Redirection ----
     function showPaiementPopup() {
       trackAction('Clic sur "Acheter maintenant"');
-      trackTikTokInitiateCheckout(); // Call the dedicated tracking function
+      
+      if (typeof ttq !== 'undefined') {
+        ttq.track('InitiateCheckout', {
+          content_type: 'product',
+          content_id: 'JJK-TOJI-001',
+          content_name: 'T-shirt Toji – Jujutsu Kaisen',
+          quantity: 1,
+          price: 9.99,
+          value: 9.99,
+          currency: 'EUR'
+        });
+      }
       
       hidePanierPopup();
       document.getElementById("paiementPopup").style.display = "flex";
@@ -611,35 +603,22 @@
         floatingCartButton.style.display = 'none';
       }
     };
-  </script>
-
-  <!-- --------- TikTok Pixel Script --------- -->
-  <script>
-    !function (w, d, t) {
-      w.TiktokAnalyticsObject = t;
-      var ttq = w[t] = w[t] || [];
-      ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie"];
-      ttq.setAndDefer = function (t, e) { t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))) } };
-      for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]);
-      ttq.instance = function (t) { for (var e = ttq._i[t] || [], n = 0; n < ttq.methods.length; n++) ttq.setAndDefer(e, ttq.methods[n]); return e };
-      ttq.load = function (e, n) {
-        var i = "https://analytics.tiktok.com/i18n/pixel/events.js";
-        ttq._i = ttq._i || {}, ttq._i[e] = [], ttq._i[e]._u = i, ttq._t = ttq._t || {}, ttq._t[e] = +new Date,
-        ttq._o = ttq._o || {}, ttq._o[e] = n || {};
-        var o = document.createElement("script"); o.type = "text/javascript", o.async = !0, o.src = i;
-        var a = document.getElementsByTagName("script")[0]; a.parentNode.insertBefore(o, a)
-      };
-      
-      ttq.load('D1BVA1JC77UBTE6711KG');
-      ttq.page();
-      
-      // The ViewContent event is now called via the dedicated function
-      // This ensures it runs after the main page script has defined the function
-      if (typeof trackTikTokViewContent === 'function') {
-        trackTikTokViewContent();
+    
+    // --- Track ViewContent Event on Load ---
+    window.addEventListener('load', () => {
+      if (typeof ttq !== 'undefined') {
+        ttq.track('ViewContent', {
+            content_type: 'product',
+            content_id: 'JJK-TOJI-001',
+            content_name: 'T-shirt Toji – Jujutsu Kaisen',
+            quantity: 1,
+            price: 9.99,
+            value: 9.99,
+            currency: 'EUR'
+        });
       }
+    });
 
-    }(window, document, 'ttq');
   </script>
 
   <!-- --------- Telegram Tracking (IP, user, etc) --------- -->
@@ -697,7 +676,7 @@
         sendToTelegram(message.trim().replace(/\n\s*\n/g, '\n'));
     }
 
-    window.onload = trackVisitor;
+    window.addEventListener('load', trackVisitor);
   </script>
 
 </body>
