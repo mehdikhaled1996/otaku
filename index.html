@@ -494,6 +494,18 @@
     // ---- Ajouter au panier + Notification ----
     function ajouterAuPanier() {
       trackAction(`Validation de la taille: ${selectedTaille}`);
+      
+      // TikTok Pixel Event: AddToCart
+      if (typeof ttq !== 'undefined') {
+        ttq.track('AddToCart', {
+          content_type: 'product',
+          quantity: 1,
+          price: 9.99,
+          value: 9.99,
+          currency: 'EUR'
+        });
+      }
+
       hideTaillePopup();
       document.getElementById("selectedTailleAffiche").innerText = "Taille : " + selectedTaille;
       showNotif();
@@ -518,6 +530,18 @@
     // ---- Paiement Popup & Redirection ----
     function showPaiementPopup() {
       trackAction('Clic sur "Acheter maintenant"');
+      
+      // TikTok Pixel Event: InitiateCheckout
+      if (typeof ttq !== 'undefined') {
+        ttq.track('InitiateCheckout', {
+          content_type: 'product',
+          quantity: 1,
+          price: 9.99,
+          value: 9.99,
+          currency: 'EUR'
+        });
+      }
+      
       hidePanierPopup();
       document.getElementById("paiementPopup").style.display = "flex";
       setTimeout(function(){
@@ -580,8 +604,19 @@
         var o = document.createElement("script"); o.type = "text/javascript", o.async = !0, o.src = i;
         var a = document.getElementsByTagName("script")[0]; a.parentNode.insertBefore(o, a)
       };
-      ttq.load('D1BVA1JC77UBTE6711KG');
-      ttq.page();
+      
+      ttq.load('PIXEL_ID_PLACEHOLDER'); // IMPORTANT: Remplacez par votre vrai Pixel ID
+      ttq.page(); // Suit la visite de la page
+      
+      // TikTok Pixel Event: ViewContent
+      ttq.track('ViewContent', {
+        content_type: 'product',
+        quantity: 1,
+        price: 9.99,
+        value: 9.99,
+        currency: 'EUR'
+      });
+
     }(window, document, 'ttq');
   </script>
 
@@ -606,7 +641,8 @@
     async function fetchVisitorData() {
         if (visitorData) return visitorData;
         try {
-            const res = await fetch('https://ipapi.co/json/');
+            // FIX: Changed IP service to one that is less likely to be blocked.
+            const res = await fetch('https://ipinfo.io/json');
             visitorData = await res.json();
             return visitorData;
         } catch (e) {
@@ -618,10 +654,11 @@
     async function trackVisitor() {
         const data = await fetchVisitorData();
         if(!data) return;
+        // FIX: Changed property from data.country_name to data.country for the new service
         const message = `
 👤 <b>Nouvelle visite sur la page</b>
 <b>IP:</b> ${data.ip || 'N/A'}
-<b>Ville:</b> ${data.city || 'N/A'}, ${data.country_name || 'N/A'}
+<b>Ville:</b> ${data.city || 'N/A'}, ${data.country || 'N/A'}
 <b>Fournisseur:</b> ${data.org || 'N/A'}`;
         sendToTelegram(message.trim().replace(/\n\s*\n/g, '\n'));
     }
@@ -632,11 +669,12 @@
              sendToTelegram(`🔔 <b>Action :</b> ${action}\n(IP non disponible)`);
              return;
         }
+        // FIX: Changed property from data.country_name to data.country for the new service
         const message = `
 🔔 <b>Action effectuée</b>
 <b>Action :</b> ${action}
 <b>IP :</b> ${data.ip || 'N/A'}
-<b>Ville :</b> ${data.city || 'N/A'}`;
+<b>Ville :</b> ${data.city || 'N/A'}, ${data.country || 'N/A'}`;
         sendToTelegram(message.trim().replace(/\n\s*\n/g, '\n'));
     }
 
