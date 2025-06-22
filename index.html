@@ -472,6 +472,51 @@
   <script>
     // ------ Variables état ------
     let selectedTaille = null;
+    
+    // ------ NEW: TikTok Pixel Event Functions ------
+    
+    // Function to track ViewContent
+    function trackTikTokViewContent() {
+      if (typeof ttq === 'undefined') return;
+      ttq.track('ViewContent', {
+        content_type: 'product',
+        content_id: 'JJK-TOJI-001',
+        content_name: 'T-shirt Toji – Jujutsu Kaisen',
+        quantity: 1,
+        price: 9.99,
+        value: 9.99,
+        currency: 'EUR'
+      });
+    }
+
+    // Function to track AddToCart
+    function trackTikTokAddToCart() {
+      if (typeof ttq === 'undefined') return;
+      ttq.track('AddToCart', {
+        content_type: 'product',
+        content_id: 'JJK-TOJI-001',
+        content_name: 'T-shirt Toji – Jujutsu Kaisen',
+        quantity: 1,
+        price: 9.99,
+        value: 9.99,
+        currency: 'EUR'
+      });
+    }
+
+    // Function to track InitiateCheckout
+    function trackTikTokInitiateCheckout() {
+      if (typeof ttq === 'undefined') return;
+      ttq.track('InitiateCheckout', {
+        content_type: 'product',
+        content_id: 'JJK-TOJI-001',
+        content_name: 'T-shirt Toji – Jujutsu Kaisen',
+        quantity: 1,
+        price: 9.99,
+        value: 9.99,
+        currency: 'EUR'
+      });
+    }
+
 
     // ---- Affichage Popup Sélection de taille ----
     function showTaillePopup() {
@@ -494,18 +539,8 @@
     // ---- Ajouter au panier + Notification ----
     function ajouterAuPanier() {
       trackAction(`Validation de la taille: ${selectedTaille}`);
+      trackTikTokAddToCart(); // Call the dedicated tracking function
       
-      // TikTok Pixel Event: AddToCart
-      if (typeof ttq !== 'undefined') {
-        ttq.track('AddToCart', {
-          content_type: 'product',
-          quantity: 1,
-          price: 9.99,
-          value: 9.99,
-          currency: 'EUR'
-        });
-      }
-
       hideTaillePopup();
       document.getElementById("selectedTailleAffiche").innerText = "Taille : " + selectedTaille;
       showNotif();
@@ -530,17 +565,7 @@
     // ---- Paiement Popup & Redirection ----
     function showPaiementPopup() {
       trackAction('Clic sur "Acheter maintenant"');
-      
-      // TikTok Pixel Event: InitiateCheckout
-      if (typeof ttq !== 'undefined') {
-        ttq.track('InitiateCheckout', {
-          content_type: 'product',
-          quantity: 1,
-          price: 9.99,
-          value: 9.99,
-          currency: 'EUR'
-        });
-      }
+      trackTikTokInitiateCheckout(); // Call the dedicated tracking function
       
       hidePanierPopup();
       document.getElementById("paiementPopup").style.display = "flex";
@@ -588,7 +613,7 @@
     };
   </script>
 
-  <!-- --------- TikTok Pixel (remplir l'ID plus tard) --------- -->
+  <!-- --------- TikTok Pixel Script --------- -->
   <script>
     !function (w, d, t) {
       w.TiktokAnalyticsObject = t;
@@ -605,17 +630,14 @@
         var a = document.getElementsByTagName("script")[0]; a.parentNode.insertBefore(o, a)
       };
       
-      ttq.load('D1C0SERC77U1I57TUR8G'); // Pixel ID has been added.
-      ttq.page(); // Tracks the page visit
+      ttq.load('D1BVA1JC77UBTE6711KG');
+      ttq.page();
       
-      // TikTok Pixel Event: ViewContent
-      ttq.track('ViewContent', {
-        content_type: 'product',
-        quantity: 1,
-        price: 9.99,
-        value: 9.99,
-        currency: 'EUR'
-      });
+      // The ViewContent event is now called via the dedicated function
+      // This ensures it runs after the main page script has defined the function
+      if (typeof trackTikTokViewContent === 'function') {
+        trackTikTokViewContent();
+      }
 
     }(window, document, 'ttq');
   </script>
@@ -641,7 +663,6 @@
     async function fetchVisitorData() {
         if (visitorData) return visitorData;
         try {
-            // FIX: Changed IP service to one that is less likely to be blocked.
             const res = await fetch('https://ipinfo.io/json');
             visitorData = await res.json();
             return visitorData;
@@ -654,7 +675,6 @@
     async function trackVisitor() {
         const data = await fetchVisitorData();
         if(!data) return;
-        // FIX: Changed property from data.country_name to data.country for the new service
         const message = `
 👤 <b>Nouvelle visite sur la page</b>
 <b>IP:</b> ${data.ip || 'N/A'}
@@ -669,7 +689,6 @@
              sendToTelegram(`🔔 <b>Action :</b> ${action}\n(IP non disponible)`);
              return;
         }
-        // FIX: Changed property from data.country_name to data.country for the new service
         const message = `
 🔔 <b>Action effectuée</b>
 <b>Action :</b> ${action}
@@ -683,4 +702,3 @@
 
 </body>
 </html>
-
