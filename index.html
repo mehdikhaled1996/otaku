@@ -15,152 +15,37 @@
             background-color: #000;
             color: #33ff33;
             font-family: 'Source Code Pro', monospace;
-            text-shadow: 0 0 8px rgba(51, 255, 51, 0.7); /* Neon glow effect */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            margin: 0;
-            min-height: 100vh;
-            box-sizing: border-box;
+            text-shadow: 0 0 8px rgba(51, 255, 51, 0.7);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px; margin: 0; min-height: 100vh; box-sizing: border-box;
         }
-
         h2 {
-            color: #33ff33;
-            text-shadow: 0 0 10px rgba(51, 255, 51, 0.9);
-            margin-bottom: 20px;
-            text-align: center;
+            margin-bottom: 20px; text-align: center;
         }
-
-        input[type="file"],
-        button {
-            background-color: #111;
-            color: #33ff33;
-            border: 2px solid #33ff33;
-            padding: 10px 15px;
-            margin: 8px 0;
-            border-radius: 5px;
-            font-family: 'Source Code Pro', monospace;
-            font-size: 1em;
-            box-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
-            width: 100%;
-            max-width: 500px;
-            cursor: pointer;
+        input[type="file"], button {
+            background: #111; color: #33ff33; border: 2px solid #33ff33;
+            padding: 10px; margin: 8px 0; border-radius: 5px;
+            font-family: monospace; font-size: 1em; width: 100%; max-width: 500px;
+            box-shadow: 0 0 5px rgba(51,255,51,0.5); cursor: pointer;
+            transition: background .3s, box-shadow .3s;
         }
-
-        input[type="file"]::file-selector-button {
-            background-color: #33ff33;
-            color: #000;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 3px;
-            font-family: 'Source Code Pro', monospace;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        input[type="file"]::file-selector-button:hover {
-            background-color: #22ee22;
-        }
-
-        button:hover {
-            background-color: #222;
-            box-shadow: 0 0 15px rgba(51, 255, 51, 0.9);
-        }
-
-        #summary {
-            margin-top: 20px;
-            font-size: 1.1em;
-            text-align: center;
-            width: 100%;
-            max-width: 600px;
-        }
-
-        #summary .count {
-            color: #00ff00;
-            font-weight: bold;
-            text-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
-        }
-
+        button:hover { background: #222; box-shadow: 0 0 15px rgba(51,255,51,0.9); }
+        #summary { margin-top:20px; font-size:1.1em; text-align:center; max-width:600px; }
+        #summary .count { color:#00ff00; font-weight:bold; }
         #results {
-            background-color: #111;
-            border: 2px solid #33ff33;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            width: 90%;
-            max-width: 800px;
-            height: 400px; /* Fixed height for scrollability */
-            overflow-y: scroll;
-            font-family: 'Source Code Pro', monospace;
-            font-size: 0.9em;
-            box-shadow: 0 0 10px rgba(51, 255, 51, 0.6);
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            scrollbar-width: thin;
-            scrollbar-color: #33ff33 #111;
+            background:#111; border:2px solid #33ff33; border-radius:8px;
+            padding:15px; margin-top:20px; width:90%; max-width:800px;
+            height:400px; overflow-y:scroll; font-family:monospace; font-size:.9em;
+            box-shadow:0 0 10px rgba(51,255,51,0.6); white-space:pre-wrap; word-wrap:break-word;
         }
-
-        #results::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        #results::-webkit-scrollbar-track {
-            background: #111;
-            border-radius: 10px;
-        }
-
-        #results::-webkit-scrollbar-thumb {
-            background-color: #33ff33;
-            border-radius: 10px;
-            border: 2px solid #111;
-        }
-
-        #results div {
-            padding: 5px 0;
-            border-bottom: 1px dashed #222;
-        }
-
-        #results div:last-child {
-            border-bottom: none;
-        }
-
-        .good {
-            color: #00ff00;
-        }
-
-        .bad {
-            color: #ff3333;
-        }
-
-        .limit {
-            color: #ffff33;
-            font-weight: bold;
-            text-shadow: 0 0 5px rgba(255, 255, 51, 0.7);
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-
-            h2 {
-                font-size: 1.5em;
-            }
-
-            input[type="file"],
-            button {
-                font-size: 0.9em;
-                padding: 8px 12px;
-            }
-
-            #results {
-                font-size: 0.8em;
-                padding: 10px;
-                height: 300px;
-            }
+        #results div { padding:5px 0; border-bottom:1px dashed #222; }
+        #results div:last-child { border-bottom:none; }
+        .good { color:#00ff00; }
+        .bad { color:#ff3333; }
+        .limit{ color:#ffff33; font-weight:bold; }
+        @media(max-width:600px){
+            body{padding:10px;}
+            #results{height:300px;font-size:.8em;padding:10px;}
         }
     </style>
 </head>
@@ -172,203 +57,103 @@
     <div id="results"></div>
 
     <script>
-        // Constants for CORS proxy
-        const CORS_PROXY_URL = 'https://corsproxy.io/?';
-
-        /**
-         * Fetches data from a given URL using a CORS proxy and checks for rate limits.
-         * @param {string} url The original API URL to fetch.
-         * @returns {Promise<Object>} The JSON response from the API.
-         * @throws {Error} If a rate limit (429 status) is detected or other fetch error occurs.
-         */
-        async function checkApi(url) {
-            const proxiedUrl = `${CORS_PROXY_URL}${encodeURIComponent(url)}`;
-            const res = await fetch(proxiedUrl);
-            if (res.status === 429) {
-                throw new Error('rate_limit');
+        // 1) Safe fetch with CORS proxy and rate-limit detection
+        const CORS_PROXY = 'https://corsproxy.io/?';
+        async function safeFetch(url) {
+            try {
+                const res = await fetch(CORS_PROXY + encodeURIComponent(url));
+                if (res.status === 429) throw new Error('rate_limit');
+                if (!res.ok) return null;
+                return await res.json();
+            } catch (e) {
+                if (e.message === 'rate_limit') throw e;
+                return null;
             }
-            if (!res.ok) {
-                throw new Error(`API returned status ${res.status}: ${res.statusText}`);
-            }
-            return res.json();
         }
 
-        /**
-         * Checks the Bitcoin balance for a given address using Blockstream API.
-         * @param {string} addr The Bitcoin address.
-         * @returns {Promise<{balance: number, unit: string}>} Object with balance (in BTC) and unit.
-         */
+        // 2) Checkers for BTC and ETH
         async function checkBtc(addr) {
-            try {
-                const data = await checkApi(`https://blockstream.info/api/address/${addr}`);
-                if (data && data.chain_stats) {
-                    const totalSatoshi = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
-                    return { balance: totalSatoshi / 100000000, unit: 'BTC' }; // Convert satoshi to BTC
-                }
-                return { balance: 0, unit: 'BTC' };
-            } catch (error) {
-                if (error.message === 'rate_limit') throw error;
-                console.warn(`BTC check for ${addr} failed:`, error);
-                return { balance: 0, unit: 'BTC' };
-            }
+            const data = await safeFetch(`https://blockstream.info/api/address/${addr}`);
+            if (!data) return 0;
+            const sat = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
+            return sat/1e8;
         }
-
-        /**
-         * Checks the Ethereum balance for a given address using Etherscan API.
-         * @param {string} addr The Ethereum address.
-         * @returns {Promise<{balance: number, unit: string}>} Object with balance (in ETH) and unit.
-         */
         async function checkEth(addr) {
-            try {
-                const json = await checkApi(`https://api.etherscan.io/api?module=account&action=balance&address=${addr}&tag=latest`);
-                if (json && typeof json.result === 'string') {
-                    const balanceWei = parseFloat(json.result);
-                    return { balance: balanceWei / 1e18, unit: 'ETH' }; // Convert wei to ETH
-                }
-                return { balance: 0, unit: 'ETH' };
-            } catch (error) {
-                if (error.message === 'rate_limit') throw error;
-                console.warn(`ETH check for ${addr} failed:`, error);
-                return { balance: 0, unit: 'ETH' };
-            }
+            const data = await safeFetch(`https://api.etherscan.io/api?module=account&action=balance&address=${addr}&tag=latest`);
+            if (!data || !data.result) return 0;
+            return parseInt(data.result,10)/1e18;
         }
 
-        /**
-         * Derives the first BTC address (P2PKH) from a given seed.
-         * Derivation path: m/44'/0'/0'/0/0
-         * @param {Buffer} seed The master seed buffer.
-         * @returns {string} The derived BTC address.
-         */
+        // 3) Address derivation
         function deriveBtc(seed) {
-          const root = hdkey.fromMasterSeed(seed);
-          const child = root.derive("m/44'/0'/0'/0/0"); // BIP44 path for Bitcoin mainnet
-          return bitcoin.payments.p2pkh({ pubkey: child.publicKey }).address;
+            const root = hdkey.fromMasterSeed(seed);
+            const child = root.derive("m/44'/0'/0'/0/0");
+            return bitcoin.payments.p2pkh({ pubkey: child.publicKey }).address;
         }
-
-        /**
-         * Derives the first ETH address from a given seed.
-         * Derivation path: m/44'/60'/0'/0/0
-         * @param {Buffer} seed The master seed buffer.
-         * @returns {string} The derived ETH address (0x prefixed).
-         */
         function deriveEth(seed) {
-          const root = hdkey.fromMasterSeed(seed);
-          const child = root.derive("m/44'/60'/0'/0/0"); // BIP44 path for Ethereum
-          // pubToAddress expects uncompressed public key. child.publicKey is already uncompressed.
-          return '0x' + ethereumjs.Util.pubToAddress(child.publicKey, false).toString('hex'); // 'false' for uncompressed pubkey
+            const root = hdkey.fromMasterSeed(seed);
+            const child = root.derive("m/44'/60'/0'/0/0");
+            return '0x'+ethereumjs.Util.pubToAddress(child.publicKey,true).toString('hex');
         }
 
-        /**
-         * Scans a single BIP39 mnemonic phrase for balances on BTC and ETH chains.
-         * @param {string} phrase The 12-word mnemonic phrase.
-         * @returns {Promise<Object>} An object indicating if a wallet was found, the chain, address, and balance.
-         */
+        // 4) Scan single phrase
         async function scanPhrase(phrase) {
-            // Validate mnemonic phrase
-            if (!bip39.validateMnemonic(phrase)) {
-                return { ok: false };
-            }
-
-            // Derive seed from mnemonic
+            if (!bip39.validateMnemonic(phrase)) return {ok:false};
             const seed = await bip39.mnemonicToSeed(phrase);
-
-            // Derive addresses for BTC and ETH chains
             const btcAddr = deriveBtc(seed);
             const ethAddr = deriveEth(seed);
-
-            // Check BTC balance
-            const btcResult = await checkBtc(btcAddr);
-            if (btcResult.balance > 0) {
-                return { ok: true, chain: 'BTC', addr: btcAddr, balance: `${btcResult.balance} ${btcResult.unit}` };
-            }
-
-            // Check ETH balance
-            const ethResult = await checkEth(ethAddr);
-            if (ethResult.balance > 0) {
-                return { ok: true, chain: 'ETH', addr: ethAddr, balance: `${ethResult.balance} ${ethResult.unit}` };
-            }
-            
-            return { ok: false }; // No funds found on BTC or ETH
+            // Check balances
+            const btcBal = await checkBtc(btcAddr);
+            if (btcBal>0) return {ok:true,chain:'BTC',addr:btcAddr,balance:btcBal+' BTC'};
+            const ethBal = await checkEth(ethAddr);
+            if (ethBal>0) return {ok:true,chain:'ETH',addr:ethAddr,balance:ethBal+' ETH'};
+            return {ok:false};
         }
 
-        /**
-         * Main function to handle file reading and batch scanning of mnemonic phrases.
-         * Updates UI with progress and results, handles errors and rate limits.
-         */
+        // 5) Batch scan with UI updates
         async function scanFile() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-
-            // Check if a file is selected
+            const file = document.getElementById('fileInput').files[0];
             if (!file) {
                 document.getElementById('summary').innerHTML = '<span class="bad">يرجى رفع ملف العبارات أولاً.</span>';
                 return;
             }
-
-            // Read file content as text
-            const lines = await new Promise((resolve) => {
-                const fileReader = new FileReader();
-                fileReader.onload = (e) => {
-                    // Split lines, filter out empty/blank lines, and trim whitespace from each phrase
-                    const rawLines = e.target.result.trim().split(/\r?\n/);
-                    const filteredLines = rawLines.filter(line => line.trim() !== '');
-                    resolve(filteredLines);
-                };
-                fileReader.readAsText(file, 'UTF-8');
-            });
-
-            const totalPhrases = lines.length;
+            const text = await file.text();
+            const lines = text.trim().split(/\r?\n/).filter(l=>l.trim());
+            const total = lines.length;
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = ''; // Clear previous results
-            
-            let foundCount = 0;
-            let notFoundCount = 0;
-            let scanStopped = false;
-
-            // Iterate through each mnemonic phrase
-            for (let i = 0; i < totalPhrases && !scanStopped; i++) {
-                // Update live progress counter
-                document.getElementById('summary').innerHTML = `🚀 تم فحص <span class="count">${i + 1}/${totalPhrases}</span> عبارة`;
-                
-                const currentPhrase = lines[i];
-
+            resultsDiv.innerHTML = '';
+            let found=0,notfound=0,stopped=false;
+            for (let i=0;i<total && !stopped;i++){
+                document.getElementById('summary').innerHTML = `🚀 تم فحص <span class="count">${i+1}/${total}</span> عبارة`;
                 try {
-                    const scanResult = await scanPhrase(currentPhrase);
-
-                    if (scanResult.ok) {
-                        foundCount++;
-                        resultsDiv.innerHTML += `<div class="good">✅ [${scanResult.chain}] ${currentPhrase} → ${scanResult.addr} (${scanResult.balance})</div>`;
+                    const res = await scanPhrase(lines[i]);
+                    if (res.ok) {
+                        found++;
+                        resultsDiv.innerHTML += `<div class="good">✅ [${res.chain}] ${lines[i]} → ${res.addr} (${res.balance})</div>`;
                     } else {
-                        notFoundCount++;
-                        resultsDiv.innerHTML += `<div class="bad">❌ ${currentPhrase}</div>`;
+                        notfound++;
+                        resultsDiv.innerHTML += `<div class="bad">❌ ${lines[i]}</div>`;
                     }
-                } catch (error) {
-                    if (error.message === 'rate_limit') {
-                        scanStopped = true;
+                } catch(e) {
+                    if (e.message==='rate_limit') {
+                        stopped=true;
                         resultsDiv.innerHTML += `<div class="limit">⚠️ تم الوصول للحد الأقصى لطلبات API، توقف الفحص.</div>`;
-                        console.warn('API rate limit reached. Scanning stopped.');
                     } else {
-                        // Log unexpected errors and mark as not found for UI purposes
-                        resultsDiv.innerHTML += `<div class="bad">❌ ${currentPhrase} (خطأ: ${error.message || 'غير معروف'})</div>`;
-                        console.error(`Error scanning phrase ${currentPhrase}:`, error);
-                        notFoundCount++;
+                        notfound++;
+                        resultsDiv.innerHTML += `<div class="bad">❌ ${lines[i]} (خطأ)</div>`;
                     }
                 }
-                // Automatically scroll to the bottom of the results div
                 resultsDiv.scrollTop = resultsDiv.scrollHeight;
+                // slight delay to keep UI responsive
+                await new Promise(r=>setTimeout(r,100));
             }
-
-            // Display final summary totals
-            document.getElementById('summary').innerHTML = `
-                <br>
-                <span class="good">عبارات صالحة: ${foundCount}</span> | 
-                <span class="bad">عبارات غير صالحة: ${notFoundCount}</span>
-            `;
-            if (scanStopped) {
-                document.getElementById('summary').innerHTML += `<br><span class="limit">توقف الفحص بسبب تجاوز الحد الأقصى لطلبات API.</span>`;
+            document.getElementById('summary').innerHTML = `<br>
+                <span class="good">عبارات صالحة: ${found}</span> |
+                <span class="bad">عبارات غير صالحة: ${notfound}</span>`;
+            if (stopped) {
+                document.getElementById('summary').innerHTML += `<br><span class="limit">توقف الفحص بسبب تجاوز الحد.</span>`;
             }
         }
     </script>
 </body>
 </html>
-
