@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>فاحص Seed Phrases</title>
-  <!-- مكتبات BIP39 و HDKey و BitcoinJS و EthereumJS للمتصفح -->
+  <!-- مكتبات BIP39 و HDKey و BitcoinJS و EthereumJS -->
   <script src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hdkey@1.1.1/dist/hdkey.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethereumjs-util@7.1.3/dist/index.umd.js"></script>
@@ -11,80 +11,82 @@
   <style>
     body { background:#000; color:#0f0; font-family: monospace; padding:1rem }
     input, button { width:100%; padding:.5rem; margin:.5rem 0; background:#111; color:#0f0; border:1px solid #0f0 }
-    #results { background:#111; padding:.5rem; max-height:400px; overflow:auto; }
+    #results { background:#111; padding:.5rem; max-height:400px; overflow:auto }
     .good { color:#0f0 } .bad { color:#f00 }
   </style>
 </head>
 <body>
   <h2>فاحص Seed Phrases</h2>
   <input type="file" id="fileInput" accept=".txt">
-  <input type="text" id="etherscanKey" placeholder="Etherscan API Key (اختياري)">
   <button onclick="scanFile()">ابدأ الفحص</button>
   <div id="results"></div>
 
   <script>
-    // Helper للطلبات مع CORS proxy (لتفادي منع المتصفح)
+    // CORS proxy لتجاوز منع المتصفح
+    const CORS = 'https://corsproxy.io/?';
+
     async function fetchJson(url) {
-      const proxy = 'https://corsproxy.io/?'; 
-      const res = await fetch(proxy + encodeURIComponent(url));
+      const res = await fetch(CORS + encodeURIComponent(url));
       if (!res.ok) throw new Error(res.status);
       return res.json();
     }
 
-    // دوال الفحص
+    // فحص رصيد BTC
     async function checkBtc(addr) {
       try {
-        const data = await fetchJson(`https://blockstream.info/api/address/${addr}`);
-        return (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) > 0;
-      } catch { return false; }
+        const d = await fetchJson(`https://blockstream.info/api/address/${addr}`);
+        return (d.chain_stats.funded_txo_sum - d.chain_stats.spent_txo_sum) > 0;
+      } catch { return false }
     }
-    async function checkEth(addr, apiKey) {
-      if (!apiKey) return false;
+    // فحص رصيد ETH
+    async function checkEth(addr) {
       try {
-        const json = await fetchJson(
+        const d = await fetchJson(
           `https://api.etherscan.io/api?module=account&action=balance` +
-          `&address=${addr}&tag=latest&apikey=${apiKey}`
+          `&address=${addr}&tag=latest`
         );
-        return parseInt(json.result||'0',10) > 0;
-      } catch { return false; }
+        return parseInt(d.result||'0',10) > 0;
+      } catch { return false }
     }
 
-    // اشتقاق العناوين
+    // اشتقاق عنوان BTC
     function deriveBtc(seed) {
       const root = hdkey.fromMasterSeed(seed);
       const child = root.derive("m/44'/0'/0'/0/0");
       return bitcoin.payments.p2pkh({ pubkey: child.publicKey }).address;
     }
+    // اشتقاق عنوان ETH
     function deriveEth(seed) {
       const root = hdkey.fromMasterSeed(seed);
       const child = root.derive("m/44'/60'/0'/0/0");
       return '0x' + ethereumjs.Util.pubToAddress(child.publicKey, true).toString('hex');
     }
 
-    // فحص الملف
     async function scanFile() {
       const file = document.getElementById('fileInput').files[0];
-      const key = document.getElementById('etherscanKey').value.trim();
       if (!file) return alert('ارفع ملف phrases.txt أولاً');
-      const content = await file.text();
-      const lines = content.trim().split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+      const txt = await file.text();
+      const lines = txt.trim().split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
       const out = document.getElementById('results');
       out.innerHTML = '';
-      for (let i=0; i<lines.length; i++) {
-        const phrase = lines[i];
-        let ok = false, addr='';
-        if (bip39.validateMnemonic(phrase)) {
-          const seed = await bip39.mnemonicToSeed(phrase);
+
+      for (let i = 0; i < lines.length; i++) {
+        const p = lines[i];
+        let ok = false, addr = '';
+        if (bip39.validateMnemonic(p)) {
+          const seed = await bip39.mnemonicToSeed(p);
           const b = deriveBtc(seed);
-          if (await checkBtc(b)) { ok=true; addr=b; }
+          if (await checkBtc(b)) { ok=true; addr=b }
           else {
             const e = deriveEth(seed);
-            if (await checkEth(e,key)) { ok=true; addr=e; }
+            if (await checkEth(e)) { ok=true; addr=e }
           }
         }
         out.innerHTML += ok
-          ? `<div class="good">✅ [${i+1}] ${phrase} → ${addr}</div>`
-          : `<div class="bad">❌ [${i+1}] ${phrase}</div>`;
+          ? `<div class="good">✅ [${i+1}] ${p} → ${addr}</div>`
+          : `<div class="bad">❌ [${i+1}] ${p}</div>`;
+        // تمرير بسيط للتفاعل مع المتصفح
+        await new Promise(r=>setTimeout(r, 200));
       }
     }
   </script>
