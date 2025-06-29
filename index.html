@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فاحص عبارات Mnemonic (BTC/ETH)</title>
     <!-- External Libraries from Public CDNs -->
-    <!-- BIP39 checksum & seed derivation (Corrected to explicitly use window.bip39) -->
-    <script src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script>
+    <!-- BIP39 checksum & seed derivation (Robust loading) -->
+    <script id="bip39Loader" src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/dist/bip39.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hdkey@1.1.1/dist/hdkey.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethereumjs-util@7.1.3/dist/index.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bitcoinjs-lib@6.1.0/dist/bitcoinjs.min.js"></script>
@@ -250,18 +250,27 @@
         const gunshotAudio = document.getElementById('gunshot');
 
         /**
-         * Updates the state of the "Start Scan" button based on input availability.
+         * Updates the state of the "Start Scan" button based on input availability and library readiness.
          */
         function updateScanButtonState() {
-            startButton.disabled = !(fileInput.files.length > 0 || phraseInput.value.trim().length > 0);
+            // Enable button only if input is present AND bip39 library is loaded
+            startButton.disabled = !(fileInput.files.length > 0 || phraseInput.value.trim().length > 0) || (typeof window.bip39 === 'undefined');
         }
 
         // Add event listeners to update button state
         fileInput.addEventListener('change', updateScanButtonState);
         phraseInput.addEventListener('input', updateScanButtonState);
 
-        // Initial check on page load
-        document.addEventListener('DOMContentLoaded', updateScanButtonState);
+        // Listen for the bip39 script to load
+        // This ensures updateScanButtonState is called after bip39 is available
+        document.getElementById('bip39Loader').onload = function() {
+            console.log('bip39.min.js loaded successfully. bip39 object:', typeof window.bip39);
+            updateScanButtonState(); 
+        };
+        // Also check if it's already loaded (e.g., from cache)
+        if (typeof window.bip39 !== 'undefined') {
+            updateScanButtonState();
+        }
 
 
         /**
@@ -318,19 +327,24 @@
         async function checkBtc(addr) {
             try {
                 const response = await checkApi(`https://blockstream.info/api/address/${addr}`);
-                if (!response.ok) { // If HTTP status is not 2xx (e.g., 404 Not Found for non-existent addresses)
-                    console.warn(`BTC check for ${addr} returned status ${response.status}: ${response.statusText}`);
-                    // If the API returns non-2xx, we consider the address as not existing in its index.
-                    return { exists: false, balance: 0, unit: 'BTC' };
+                
+                // If Blockstream returns 404 for an address, it often means it's never been on chain.
+                // For our purpose of "exists but empty", we'll treat 404 for a validly derived address as existing empty.
+                if (response.status === 404) {
+                    return { exists: true, balance: 0, unit: 'BTC' };
+                }
+
+                if (!response.ok) { // Other non-2xx status (e.g., 500 server error, or non-404 client error)
+                    console.warn(`BTC check for ${addr} returned non-OK status ${response.status}: ${response.statusText}`);
+                    return { exists: false, balance: 0, unit: 'BTC' }; // True API error or invalid address format that isn't a 404
                 }
                 
-                // If response.ok is true (HTTP 2xx), then the address is considered "found" by the API.
-                // We then try to parse its balance.
+                // If response.ok is true (HTTP 2xx), then the address is confirmed by the API.
                 const data = await response.json();
                 let totalSatoshi = 0;
                 // Blockstream provides chain_stats if the address has had any activity.
                 // If chain_stats is present, we calculate balance.
-                // If response.ok but no chain_stats, it implies an existing address with no activity.
+                // If response.ok but no chain_stats, it implies an existing address with no activity (should be covered by 404 above, but just in case)
                 if (data && data.chain_stats) {
                     totalSatoshi = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
                 }
@@ -405,9 +419,12 @@
          */
         async function scanPhrase(phrase) {
             // Check if window.bip39 is defined before using it
-            if (typeof window.bip39 === 'undefined' || !window.bip39.validateMnemonic(phrase)) {
-                console.error("BIP39 library is not loaded or the mnemonic is invalid:", phrase);
-                return { status: 'not_found' }; // Invalid mnemonic or BIP39 not available
+            if (typeof window.bip39 === 'undefined') {
+                console.error("BIP39 library is not yet loaded or failed to load. Please refresh the page.");
+                return { status: 'not_found', error: 'BIP39 library not available' };
+            }
+            if (!window.bip39.validateMnemonic(phrase)) {
+                return { status: 'not_found', error: 'Invalid mnemonic' };
             }
 
             // Derive seed from mnemonic
@@ -512,7 +529,9 @@
                             break;
                         case 'not_found':
                             notFoundCount++;
-                            resultsDiv.innerHTML += `<div class="bad">❌ ${currentPhrase}</div>`;
+                            // Check if the error was specifically "BIP39 library not available" for more detailed message
+                            const errorMessage = scanResult.error && scanResult.error.includes('BIP39') ? 'BIP39 library not loaded or invalid mnemonic.' : (scanResult.error || 'غير معروف');
+                            resultsDiv.innerHTML += `<div class="bad">❌ ${currentPhrase} (خطأ: ${errorMessage})</div>`;
                             break;
                     }
                 } catch (error) {
@@ -548,4 +567,3 @@
     </script>
 </body>
 </html>
-
